@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
@@ -29,9 +31,10 @@ import javax.swing.SwingWorker;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import com.google.code.smallcrab.analyze.AnalyzeCallback;
-import com.google.code.smallcrab.analyze.FileLineAnalyzer;
+import com.google.code.smallcrab.config.chart.ChartConfig;
 import com.google.code.smallcrab.protocol.Format;
+import com.google.code.smallcrab.reducer.AnalyzeCallback;
+import com.google.code.smallcrab.reducer.FileAnalyzer;
 
 /**
  * Control panel with analyze task.
@@ -83,7 +86,9 @@ public class ControlPanel extends JPanel implements ActionListener {
 			return isPaused;
 		}
 
-		private FileLineAnalyzer analyzer;
+		private FileAnalyzer analyzer;
+
+		private ChartConfig chartConfig;
 
 		/*
 		 * Main task. Executed in background thread.
@@ -98,6 +103,7 @@ public class ControlPanel extends JPanel implements ActionListener {
 					final long totalLength = sourceFile.length();
 					AnalyzeConfigPanel<?, ?> selectedConfig = getSelectedConfigPanel();
 					this.analyzer = selectedConfig.createFileLineAnalyzer();
+					this.chartConfig = selectedConfig.createChartConfig();
 					setProgress(0);
 					outputClear();
 					outputAnalyzeStart(totalLength);
@@ -144,7 +150,7 @@ public class ControlPanel extends JPanel implements ActionListener {
 						final Map<Double, Integer> xCount = new HashMap<Double, Integer>(10240);
 						analyzer.analyzeXYSplots(sourceFile, xySpots, xCount, ac);
 						outputResultHeader(analyzer, totalLength, ac);
-						outputResultXYSplots(analyzer, totalLength, xySpots, xCount, ac);
+						outputResultXYSplots(analyzer, chartConfig, totalLength, xySpots, xCount, ac);
 					}
 					toolBarPanel.clickStopButton();
 					setTitle("Stop");
@@ -167,7 +173,7 @@ public class ControlPanel extends JPanel implements ActionListener {
 			taskOutput.append("= Size:" + totalLength + "bytes\n");
 		}
 
-		private void outputResultHeader(FileLineAnalyzer ala, final long totalLength, final AnalyzeCallback ac) {
+		private void outputResultHeader(FileAnalyzer ala, final long totalLength, final AnalyzeCallback ac) {
 			taskOutput.append("= totalLines:" + ac.getTotalLines() + "\n");
 			taskOutput.append("= invalidLines:" + ac.getInvalidLines() + "\n");
 			taskOutput.append("= Consuming:" + ala.getAnalyzePeriod() + "ms\n");
@@ -175,7 +181,7 @@ public class ControlPanel extends JPanel implements ActionListener {
 			taskOutput.append("===============================================\n");
 		}
 
-		private void outputResultCount(FileLineAnalyzer ala, final long totalLength, Map<String, Integer> result, final AnalyzeCallback callback) {
+		private void outputResultCount(FileAnalyzer ala, final long totalLength, Map<String, Integer> result, final AnalyzeCallback callback) {
 			Object[] resultArray = result.entrySet().toArray();
 			Arrays.sort(resultArray, new Comparator<Object>() {
 				@SuppressWarnings("unchecked")
@@ -191,7 +197,7 @@ public class ControlPanel extends JPanel implements ActionListener {
 			}
 		}
 
-		private void outputResultAppend(FileLineAnalyzer ala, final long totalLength, Map<String, Set<String>> result, final AnalyzeCallback callback) {
+		private void outputResultAppend(FileAnalyzer ala, final long totalLength, Map<String, Set<String>> result, final AnalyzeCallback callback) {
 			for (Iterator<Entry<String, Set<String>>> itt = result.entrySet().iterator(); itt.hasNext();) {
 				Entry<String, Set<String>> next = itt.next();
 				taskOutput.append(next.getKey() + "," + next.getValue() + "\n");
@@ -201,28 +207,33 @@ public class ControlPanel extends JPanel implements ActionListener {
 		private DateFormat dateFormat = Format.getDateFormat();
 		private Calendar cal = Format.getCalendar();
 
-		public void outputResultXYSplots(FileLineAnalyzer analyzer, long totalLength, List<List<Double>> result, Map<Double, Integer> xCount, AnalyzeCallback callback) {
-			cal.setTimeInMillis((long) callback.getxMinValue());
-			taskOutput.append(String.format("x min value:%s\n", dateFormat.format(cal.getTime())));
-			cal.setTimeInMillis((long) callback.getxMaxValue());
-			taskOutput.append(String.format("x max value:%s\n", dateFormat.format(cal.getTime())));
-			taskOutput.append(String.format("y min value:%s\n", callback.getyMinValue()));
-			taskOutput.append(String.format("y max value:%s\n", callback.getyMaxValue()));
-			chartPanel.setxMaxValue(callback.getxMaxValue());
-			chartPanel.setxMinValue(callback.getxMinValue());
-			chartPanel.setyMaxValue(callback.getyMaxValue());
-			chartPanel.setyMinValue(callback.getyMinValue());
-			for (Entry<Double, Integer> entry : xCount.entrySet()) {
+		public void outputResultXYSplots(FileAnalyzer fileAnalyzer, ChartConfig chartConfig, long totalLength, List<List<Double>> yList, Map<Double, Integer> xMapFrequency, AnalyzeCallback analyzeCallback) {
+			cal.setTimeInMillis((long) analyzeCallback.getXMinValue());
+			taskOutput.append(String.format("x min:%s\n", dateFormat.format(cal.getTime())));
+			cal.setTimeInMillis((long) analyzeCallback.getXMaxValue());
+			taskOutput.append(String.format("x max:%s\n", dateFormat.format(cal.getTime())));
+			taskOutput.append(String.format("y min:%s\n", analyzeCallback.getYMinValue()));
+			cal.setTimeInMillis((long) analyzeCallback.getYMaxXValue());
+			taskOutput.append(String.format("y max:%s at x:%s\n", analyzeCallback.getYMaxValue(), dateFormat.format(cal.getTime())));
+			taskOutput.append(String.format("y average:%s\n", analyzeCallback.getYValueAverage()));
+			for (Entry<Double, Integer> entry : xMapFrequency.entrySet()) {
 				int count = entry.getValue();
-				callback.setxMinCount(count);
-				callback.setxMaxCount(count);
+				analyzeCallback.setFrequency(count, entry.getKey());
 			}
-			taskOutput.append(String.format("min frequency:%s\n", callback.getxMinCount()));
-			taskOutput.append(String.format("max frequency:%s\n", callback.getxMaxCount()));
-			chartPanel.setxMinCount(callback.getxMinCount());
-			chartPanel.setxMaxCount(callback.getxMaxCount());
-			chartPanel.setResult(result);
-			chartPanel.setxCount(xCount);
+			taskOutput.append(String.format("frequency min:%s\n", analyzeCallback.getFrequencyMinValue()));
+			cal.setTimeInMillis((long) analyzeCallback.getFrequencyMaxXValue());
+			taskOutput.append(String.format("frequency max:%s at x:%s\n", analyzeCallback.getFrequencyMaxValue(), dateFormat.format(cal.getTime())));
+			taskOutput.append(String.format("frequency average:%s\n", analyzeCallback.getFrequencyAverage()));
+			
+			chartPanel.setxMax(analyzeCallback.getXMaxValue());
+			chartPanel.setxMin(analyzeCallback.getXMinValue());
+			chartPanel.setyMax(analyzeCallback.getYMaxValue());
+			chartPanel.setyMin(analyzeCallback.getYMinValue());
+			chartPanel.setFrequencyMin(analyzeCallback.getFrequencyMinValue());
+			chartPanel.setFrequencyMax(analyzeCallback.getFrequencyMaxValue());
+			chartPanel.setyList(yList);
+			chartPanel.setxMapFrequency(xMapFrequency);
+			chartPanel.setChartConfig(chartConfig);
 			chartPanel.repaint();
 		}
 
@@ -284,8 +295,16 @@ public class ControlPanel extends JPanel implements ActionListener {
 			public void stateChanged(ChangeEvent changeEvent) {
 				// do nothing
 			}
+		}, new ItemListener() {
+			public void itemStateChanged(ItemEvent itemEvent) {
+				int state = itemEvent.getStateChange();
+				if (state == ItemEvent.SELECTED || state == ItemEvent.DESELECTED) {
+					ControlPanel.this.chartPanel.setChartConfig(getSelectedConfigPanel().createChartConfig());
+					ControlPanel.this.chartPanel.repaint();
+				}
+			}
 		});
-		this.configPane.setPreferredSize(new Dimension(450, 500));
+		this.configPane.setPreferredSize(new Dimension(500, 500));
 		add(configPane, BorderLayout.CENTER);
 	}
 

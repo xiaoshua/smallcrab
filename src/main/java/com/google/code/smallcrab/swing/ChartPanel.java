@@ -20,225 +20,340 @@ import java.util.Map.Entry;
 
 import javax.swing.JPanel;
 
+import com.google.code.smallcrab.config.chart.ChartConfig;
 import com.google.code.smallcrab.protocol.Format;
 
 public class ChartPanel extends JPanel {
 
 	private static final long serialVersionUID = -5545955161976746807L;
 
+	private static final Insets borderInsets = new Insets(40, 40, 40, 40);
+
+	private static final DateFormat dateFormat = Format.getShortDateFormat();
+
+	private static final Calendar cal = Format.getCalendar();
+
+	private double xMax;
+
+	private double yMax;
+
+	private double xMin = 0;
+
+	private double yMin = 0;
+
+	private int frequencyMin = 0;
+
+	private int frequencyMax = 0;
+
+	private List<List<Double>> yList;
+
+	private Map<Double, Integer> xMapFrequency;
+
+	private boolean xMapFrequencySorted;
+
+	public void setyMax(double yMax) {
+		this.yMax = yMax;
+	}
+
+	public void setxMax(double xMax) {
+		this.xMax = xMax;
+	}
+
+	public void setxMin(double xMin) {
+		this.xMin = xMin;
+	}
+
+	public void setyMin(double yMin) {
+		this.yMin = yMin;
+	}
+
+	public void setFrequencyMin(int frequencyMin) {
+		this.frequencyMin = frequencyMin;
+	}
+
+	public void setFrequencyMax(int frequencyMax) {
+		this.frequencyMax = frequencyMax;
+	}
+
+	public void setyList(List<List<Double>> yList) {
+		this.yList = yList;
+	}
+
+	public void setxMapFrequency(Map<Double, Integer> xMapFrequency) {
+		this.xMapFrequency = xMapFrequency;
+		this.xFrequencies = this.xMapFrequency.entrySet().toArray();
+		this.xMapFrequencySorted = false;
+	}
+
+	private ChartConfig chartConfig;
+
+	private Object[] xFrequencies;
+
+	public void setChartConfig(ChartConfig chartConfig) {
+		this.chartConfig = chartConfig;
+	}
+
 	public ChartPanel() {
 		super(new BorderLayout());
-		this.setPreferredSize(new Dimension(600, 400));
+		setPreferredSize(new Dimension(600, 400));
 		setBackground(Color.white);
-	}
-
-	private double xMaxValue;
-
-	public void setxMaxValue(double xMaxValue) {
-		this.xMaxValue = xMaxValue;
-	}
-
-	private double yMaxValue;
-
-	public void setyMaxValue(double yMaxValue) {
-		this.yMaxValue = yMaxValue;
-	}
-
-	private double xMinValue = 0;
-
-	private double yMinValue = 0;
-
-	public void setxMinValue(double xMinValue) {
-		this.xMinValue = xMinValue;
-	}
-
-	public void setyMinValue(double yMinValue) {
-		this.yMinValue = yMinValue;
-	}
-
-	private double xMinCount = 0;
-
-	private double xMaxCount = 0;
-
-	public void setxMinCount(int xMinCount) {
-		this.xMinCount = xMinCount;
-	}
-
-	public void setxMaxCount(int xMaxCount) {
-		this.xMaxCount = xMaxCount;
-	}
-
-	private Insets borderInsets = new Insets(40, 40, 40, 40);
-
-	public void paintPoint(int x, int y) {
-
-	}
-
-	private List<List<Double>> result;
-
-	private Map<Double, Integer> xCount;
-
-	public void setResult(List<List<Double>> result2) {
-		this.result = result2;
-	}
-
-	public void setxCount(Map<Double, Integer> xCount) {
-		this.xCount = xCount;
 	}
 
 	@Override
 	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
-		if (result != null) {
-			drawAxis(g);
-			drawxCount(g);
-			drawData(g);
+		Graphics2D g2d = (Graphics2D) g;
+		if (yList != null) {
+			drawAxis(g2d);
+			drawXMark(g2d);
+			if (chartConfig != null) {
+				if (chartConfig.isDrawFrequency() || chartConfig.isDrawFrequencyAverage()) {
+					drawFrequencyMark(g2d);
+					if (chartConfig.isDrawFrequency()) {
+						drawFrequency(g2d);
+					}
+					if (chartConfig.isDrawFrequencyAverage()) {
+						drawFrequencyAverage(g2d);
+					}
+				}
+				if (chartConfig.isDrawY() || chartConfig.isDrawYAverage()) {
+					drawYMark(g2d);
+					if (chartConfig.isDrawY()) {
+						drawY(g2d);
+					}
+					if (chartConfig.isDrawYAverage()) {
+						drawYAverage(g2d);
+					}
+				}
+			}
 		}
 	}
 
-	private DateFormat dateFormat = Format.getDateFormat();
-	private Calendar cal = Format.getCalendar();
-
-	private void drawAxis(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
-		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
-		g2d.setComposite(ac);
+	private void drawAxis(Graphics2D g2d) {
 		int xEnd = this.getWidth() - borderInsets.right;
 		int yEnd = this.getHeight() - borderInsets.bottom;
 		int xLength = this.getWidth() - borderInsets.left - borderInsets.right;
 		int yLength = this.getHeight() - borderInsets.top - borderInsets.bottom;
+		g2d.setColor(Color.black);
+		// draw axis backgroud
+		g2d.fillPolygon(new int[] { 0, this.getWidth(), this.getWidth(), 0 }, new int[] { 0, 0, this.getHeight(), this.getHeight() }, 4);
+		
 		// draw axis
-		g.setColor(Color.black);
-		g.drawLine(borderInsets.left, borderInsets.top, borderInsets.left, yEnd);
-		g.drawLine(borderInsets.left, borderInsets.top, borderInsets.left - 3, borderInsets.top + 3);
-		g.drawLine(borderInsets.left, borderInsets.top, borderInsets.left + 3, borderInsets.top + 3);
-		g.drawLine(borderInsets.left, yEnd, xEnd, yEnd);
-		g.drawLine(xEnd, yEnd, xEnd - 3, yEnd + 3);
-		g.drawLine(xEnd, yEnd, xEnd - 3, yEnd - 3);
+		g2d.setColor(Color.WHITE);
+		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
+		g2d.setComposite(ac);
+		g2d.drawLine(borderInsets.left, borderInsets.top, borderInsets.left, yEnd);
+		g2d.drawLine(borderInsets.left, borderInsets.top, borderInsets.left - 3, borderInsets.top + 3);
+		g2d.drawLine(borderInsets.left, borderInsets.top, borderInsets.left + 3, borderInsets.top + 3);
+		g2d.drawLine(xEnd, borderInsets.top, xEnd, yEnd);
+		g2d.drawLine(borderInsets.left, yEnd, xEnd, yEnd);
+		g2d.drawLine(xEnd, yEnd, xEnd - 3, yEnd + 3);
+		g2d.drawLine(xEnd, yEnd, xEnd - 3, yEnd - 3);
+		
 		// draw y mark
-		g.drawLine(borderInsets.left + 5, borderInsets.top, borderInsets.left - 5, borderInsets.top);
-		g.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 4, borderInsets.left - 5, borderInsets.top + yLength / 4);
-		g.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 2, borderInsets.left - 5, borderInsets.top + yLength / 2);
-		g.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 4 * 3, borderInsets.left - 5, borderInsets.top + yLength / 4 * 3);
-		g.drawLine(borderInsets.left, yEnd, borderInsets.left - 5, yEnd);
+		g2d.drawLine(borderInsets.left + 5, borderInsets.top, borderInsets.left - 5, borderInsets.top);
+		g2d.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 4, borderInsets.left - 5, borderInsets.top + yLength / 4);
+		g2d.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 2, borderInsets.left - 5, borderInsets.top + yLength / 2);
+		g2d.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 4 * 3, borderInsets.left - 5, borderInsets.top + yLength / 4 * 3);
+		g2d.drawLine(borderInsets.left, yEnd, borderInsets.left - 5, yEnd);
+		
+		// draw y mark
+		g2d.drawLine(xEnd + 5, borderInsets.top, xEnd - 5, borderInsets.top);
+		g2d.drawLine(xEnd + 5, borderInsets.top + yLength / 4, xEnd - 5, borderInsets.top + yLength / 4);
+		g2d.drawLine(xEnd + 5, borderInsets.top + yLength / 2, xEnd - 5, borderInsets.top + yLength / 2);
+		g2d.drawLine(xEnd + 5, borderInsets.top + yLength / 4 * 3, xEnd - 5, borderInsets.top + yLength / 4 * 3);
+		g2d.drawLine(xEnd, yEnd, borderInsets.left + 5, yEnd);
+		
 		// draw x mark
-		g.drawLine(xEnd, yEnd, xEnd, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 8 * 7, yEnd, borderInsets.left + xLength / 8 * 7, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 4 * 3, yEnd, borderInsets.left + xLength / 4 * 3, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 8 * 5, yEnd, borderInsets.left + xLength / 8 * 5, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 2, yEnd, borderInsets.left + xLength / 2, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 8 * 3, yEnd, borderInsets.left + xLength / 8 * 3, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 4, yEnd, borderInsets.left + xLength / 4, yEnd + 5);
-		g.drawLine(borderInsets.left + xLength / 8 * 1, yEnd, borderInsets.left + xLength / 8 * 1, yEnd + 5);
-		g.drawLine(borderInsets.left, yEnd, borderInsets.left, yEnd + 5);
+		g2d.drawLine(xEnd, yEnd, xEnd, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 8 * 7, yEnd, borderInsets.left + xLength / 8 * 7, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 4 * 3, yEnd, borderInsets.left + xLength / 4 * 3, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 8 * 5, yEnd, borderInsets.left + xLength / 8 * 5, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 2, yEnd, borderInsets.left + xLength / 2, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 8 * 3, yEnd, borderInsets.left + xLength / 8 * 3, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 4, yEnd, borderInsets.left + xLength / 4, yEnd + 5);
+		g2d.drawLine(borderInsets.left + xLength / 8 * 1, yEnd, borderInsets.left + xLength / 8 * 1, yEnd + 5);
+		g2d.drawLine(borderInsets.left, yEnd, borderInsets.left, yEnd + 5);
+		
 		// draw axis label
-		g.setColor(Color.black);
 		ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
 		g2d.setComposite(ac);
 		String xLabel = "x-axis";
 		String yLabel = "y-axis";
-		g.setFont(this.getFont());
-		FontMetrics metrics = g.getFontMetrics();
+		g2d.setFont(this.getFont());
+		FontMetrics metrics = g2d.getFontMetrics();
 		int width = metrics.stringWidth(xLabel);
-		g.drawString(xLabel, borderInsets.left + (xLength - width) / 2, yEnd + (borderInsets.bottom + metrics.getHeight()) / 2);
+		g2d.drawString(xLabel, borderInsets.left + (xLength - width) / 2, yEnd + (borderInsets.bottom + metrics.getHeight()) / 2);
 		AffineTransform transform = new AffineTransform();
 		width = metrics.stringWidth(yLabel);
 		transform.setToTranslation((borderInsets.left - metrics.getHeight()) / 2, borderInsets.top + (yLength - width) / 2);
 		transform.rotate(Math.PI / 2);
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		// draw frequncy mark label
-		g.setColor(Color.blue);
-		yLabel = String.valueOf(this.xMaxCount);
-		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf((this.xMaxCount - this.xMinCount) / 4 * 3 + this.xMinCount);
-		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength / 4 - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf((this.xMaxCount - this.xMinCount) / 2 + this.xMinCount);
-		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength / 2 - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf((this.xMaxCount - this.xMinCount) / 4 + this.xMinCount);
-		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength / 4 * 3 - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf(this.xMinCount);
-		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		// draw y mark label
-		g.setColor(Color.red);
-		yLabel = String.valueOf(this.yMaxValue);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf((this.yMaxValue - this.yMinValue) / 4 * 3 + this.yMinValue);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength / 4 - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf((this.yMaxValue - this.yMinValue) / 2 + this.yMinValue);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength / 2 - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf((this.yMaxValue - this.yMinValue) / 4 + this.yMinValue);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength / 4 * 3 - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		yLabel = String.valueOf(this.yMinValue);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength - metrics.stringWidth(yLabel) / 2);
-		transform.rotate(Math.PI / 2);
-		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		// draw x mark label
-		g.setColor(Color.black);
+		g2d.drawString(yLabel, 0, 0);
+	}
 
-		cal.setTimeInMillis((long) this.xMaxValue);
+	private void drawXMark(Graphics2D g2d) {
+		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
+		g2d.setComposite(ac);
+		AffineTransform transform = new AffineTransform();
+		int xLength = this.getWidth() - borderInsets.left - borderInsets.right;
+		int yLength = this.getHeight() - borderInsets.top - borderInsets.bottom;
+		FontMetrics metrics = g2d.getFontMetrics();
+		String yLabel;
+		g2d.setColor(Color.WHITE);
+		cal.setTimeInMillis((long) this.xMax);
 		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
 		transform.setToTranslation(borderInsets.left + xLength - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		cal.setTimeInMillis((long) ((this.xMaxValue - this.xMinValue) / 4 * 3 + this.xMinValue));
+		g2d.drawString(yLabel, 0, 0);
+		cal.setTimeInMillis((long) ((this.xMax - this.xMin) / 4 * 3 + this.xMin));
 		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
 		transform.setToTranslation(borderInsets.left + xLength / 4 * 3 - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		cal.setTimeInMillis((long) ((this.xMaxValue - this.xMinValue) / 2 + this.xMinValue));
+		g2d.drawString(yLabel, 0, 0);
+		cal.setTimeInMillis((long) ((this.xMax - this.xMin) / 2 + this.xMin));
 		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
 		transform.setToTranslation(borderInsets.left + xLength / 2 - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		cal.setTimeInMillis((long) ((this.xMaxValue - this.xMinValue) / 4 + this.xMinValue));
+		g2d.drawString(yLabel, 0, 0);
+		cal.setTimeInMillis((long) ((this.xMax - this.xMin) / 4 + this.xMin));
 		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
 		transform.setToTranslation(borderInsets.left + xLength / 4 - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
-		cal.setTimeInMillis((long) (this.xMinValue));
+		g2d.drawString(yLabel, 0, 0);
+		cal.setTimeInMillis((long) (this.xMin));
 		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
 		transform.setToTranslation(borderInsets.left - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
+		g2d.drawString(yLabel, 0, 0);
 	}
 
-	private void drawxCount(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
+	private void drawYMark(Graphics2D g2d ) {
+		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
+		g2d.setComposite(ac);
+		AffineTransform transform = new AffineTransform();
+		int yLength = this.getHeight() - borderInsets.top - borderInsets.bottom;
+		FontMetrics metrics = g2d.getFontMetrics();
+		String yLabel;
+		// draw y mark label
+		g2d.setColor(Color.red);
+		int xLength = this.getWidth() - borderInsets.left - borderInsets.right;
+		yLabel = String.valueOf(this.yMax);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf((this.yMax - this.yMin) / 4 * 3 + this.yMin);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength / 4 - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf((this.yMax - this.yMin) / 2 + this.yMin);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength / 2 - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf((this.yMax - this.yMin) / 4 + this.yMin);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength / 4 * 3 - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf(this.yMin);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+	}
+
+	/**
+	 * draw frequncy mark label
+	 * 
+	 * @param g
+	 * @param g2d
+	 * @param yLength
+	 * @param metrics
+	 * @param transform
+	 */
+	private void drawFrequencyMark(Graphics2D g2d) {
+		int yLength = this.getHeight() - borderInsets.top - borderInsets.bottom;
+		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
+		g2d.setComposite(ac);
+		FontMetrics metrics = g2d.getFontMetrics();
+		AffineTransform transform = new AffineTransform();
+		String yLabel;
+		g2d.setColor(Color.blue);
+		yLabel = String.valueOf(this.frequencyMax);
+		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf((this.frequencyMax - this.frequencyMin) / 4 * 3 + this.frequencyMin);
+		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength / 4 - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf((this.frequencyMax - this.frequencyMin) / 2 + this.frequencyMin);
+		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength / 2 - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf((this.frequencyMax - this.frequencyMin) / 4 + this.frequencyMin);
+		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength / 4 * 3 - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+		yLabel = String.valueOf(this.frequencyMin);
+		transform.setToTranslation(borderInsets.left - metrics.getHeight(), borderInsets.top + yLength - metrics.stringWidth(yLabel) / 2);
+		transform.rotate(Math.PI / 2);
+		g2d.setTransform(transform);
+		g2d.drawString(yLabel, 0, 0);
+	}
+
+	private void drawFrequency(Graphics2D g2d) {
 		AffineTransform transform = new AffineTransform();
 		transform.setToTranslation(borderInsets.left, this.getHeight() - borderInsets.bottom);
 		g2d.setTransform(transform);
-		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
-		g2d.setComposite(ac);
-		Object[] countArray = xCount.entrySet().toArray();
+		if (this.chartConfig.isDrawFrequencyLine() && (this.xMapFrequencySorted == false)) {
+			sortFrequency(xFrequencies);
+		}
+		int xAxisLength = this.getWidth() - borderInsets.right - borderInsets.left;
+		int yAxisLength = this.getHeight() - borderInsets.bottom - borderInsets.top;
+		AlphaComposite acPoint = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
+		AlphaComposite acLine = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f);
+		g2d.setColor(Color.blue);
+		GeneralPath line = new GeneralPath();
+		boolean lineStart = true;
+		for (Object entry : xFrequencies) {
+			@SuppressWarnings("unchecked")
+			double x = ((Entry<Double, Integer>) entry).getKey();
+			int pointX = (int) ((x - xMin) / (xMax - xMin) * xAxisLength);
+			@SuppressWarnings("unchecked")
+			int y = ((Entry<Double, Integer>) entry).getValue();
+			int pointY = -(int) (1.0 * (y - frequencyMin) / (frequencyMax - frequencyMin) * yAxisLength);
+			g2d.setComposite(acPoint);
+			this.drawPoint(g2d, pointX, pointY);
+			g2d.setComposite(acLine);
+			if (this.chartConfig.isDrawFrequencyLine()) {
+				if (lineStart) {
+					line.moveTo(pointX, pointY);
+					lineStart = false;
+				} else {
+					line.lineTo(pointX, pointY);
+				}
+			}
+			if (this.chartConfig.isDrawFrequencyHistogram()) {
+				g2d.drawLine(pointX, 0, pointX, pointY);
+			}
+		}
+		if (this.chartConfig.isDrawFrequencyLine()) {
+			g2d.draw(line);
+		}
+	}
+
+	private void drawFrequencyAverage(Graphics2D g2d) {
+	}
+
+	private void sortFrequency(Object[] countArray) {
 		Arrays.sort(countArray, new Comparator<Object>() {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -246,57 +361,35 @@ public class ChartPanel extends JPanel {
 				return (int) (((Entry<Double, Integer>) o1).getKey() - ((Entry<Double, Integer>) o2).getKey());
 			}
 		});
-		GeneralPath line = new GeneralPath();
-		int xAxisLength = this.getWidth() - borderInsets.right - borderInsets.left;
-		int yAxisLength = this.getHeight() - borderInsets.bottom - borderInsets.top;
-		boolean isLineStart = true;
-		for (Object entry : countArray) {
-			@SuppressWarnings("unchecked")
-			double x = ((Entry<Double, Integer>) entry).getKey();
-			int pointX = (int) ((x - xMinValue) / (xMaxValue - xMinValue) * xAxisLength);
-			@SuppressWarnings("unchecked")
-			int y = ((Entry<Double, Integer>) entry).getValue();
-			int pointY = -(int) ((y - xMinCount) / (xMaxCount - xMinCount) * yAxisLength);
-			int[] pointXs = new int[] { pointX, pointX + 1, pointX, pointX - 1 };
-			int[] pointYs = new int[] { pointY + 1, pointY, pointY - 1, pointY };
-			g2d.setColor(Color.blue);
-			g2d.drawPolygon(pointXs, pointYs, 4);
-			g2d.fillPolygon(pointXs, pointYs, 4);
-			if (isLineStart) {
-				line.moveTo(pointX, pointY);
-				isLineStart = false;
-			} else {
-				line.lineTo(pointX, pointY);
-			}
-		}
-		ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f);
-		g2d.setComposite(ac);
-		g2d.draw(line);
-
+		this.xMapFrequencySorted = true;
 	}
 
-	private void drawData(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
+	private void drawY(Graphics2D g2d) {
 		AffineTransform transform = new AffineTransform();
 		transform.setToTranslation(borderInsets.left, this.getHeight() - borderInsets.bottom);
 		g2d.setTransform(transform);
-		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, .3f);
+		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
 		g2d.setColor(Color.red);
 		g2d.setComposite(ac);
 		int xAxisLength = this.getWidth() - borderInsets.right - borderInsets.left;
 		int yAxisLength = this.getHeight() - borderInsets.bottom - borderInsets.top;
-		for (List<Double> points : result) {
+		for (List<Double> points : yList) {
 			double x = points.get(0);
-			int pointX = (int) ((x - xMinValue) / (xMaxValue - xMinValue) * xAxisLength);
+			int pointX = (int) ((x - xMin) / (xMax - xMin) * xAxisLength);
 			for (int i = 1; i < points.size(); i++) {
 				double y = points.get(i);
-				int pointY = -(int) ((y - yMinValue) / (yMaxValue - yMinValue) * yAxisLength);
-				int[] pointXs = new int[] { pointX, pointX + 1, pointX, pointX - 1 };
-				int[] pointYs = new int[] { pointY + 1, pointY, pointY - 1, pointY };
-				g2d.drawPolygon(pointXs, pointYs, 4);
-				g2d.fillPolygon(pointXs, pointYs, 4);
+				int pointY = -(int) ((y - yMin) / (yMax - yMin) * yAxisLength);
+				drawPoint(g2d, pointX, pointY);
 			}
 		}
+	}
+	
+	private void drawYAverage(Graphics2D g2d) {
+		
+	}
+
+	private void drawPoint(Graphics2D g2d, int pointX, int pointY) {
+		g2d.fillRect(pointX, pointY, 1, 1);
 	}
 
 }
