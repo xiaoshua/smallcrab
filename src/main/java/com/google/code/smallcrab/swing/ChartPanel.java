@@ -49,6 +49,8 @@ public class ChartPanel extends JPanel {
 
 	private Map<Double, Integer> xMapFrequency;
 
+	private boolean xMapFrequencySorted;
+
 	public void setyMax(double yMax) {
 		this.yMax = yMax;
 	}
@@ -79,6 +81,16 @@ public class ChartPanel extends JPanel {
 
 	public void setxMapFrequency(Map<Double, Integer> xMapFrequency) {
 		this.xMapFrequency = xMapFrequency;
+		this.xFrequencies = this.xMapFrequency.entrySet().toArray();
+		this.xMapFrequencySorted = false;
+	}
+
+	private ChartConfig chartConfig;
+
+	private Object[] xFrequencies;
+
+	public void setChartConfig(ChartConfig chartConfig) {
+		this.chartConfig = chartConfig;
 	}
 
 	public ChartPanel() {
@@ -95,22 +107,26 @@ public class ChartPanel extends JPanel {
 			drawAxis(g2d);
 			drawXMark(g2d);
 			if (chartConfig != null) {
-				if (chartConfig.isDrawFrequency()) {
+				if (chartConfig.isDrawFrequency() || chartConfig.isDrawFrequencyAverage()) {
 					drawFrequencyMark(g2d);
-					drawFrequency(g2d);
+					if (chartConfig.isDrawFrequency()) {
+						drawFrequency(g2d);
+					}
+					if (chartConfig.isDrawFrequencyAverage()) {
+						drawFrequencyAverage(g2d);
+					}
 				}
-				if (chartConfig.isDrawY()) {
+				if (chartConfig.isDrawY() || chartConfig.isDrawYAverage()) {
 					drawYMark(g2d);
-					drawY(g2d);
+					if (chartConfig.isDrawY()) {
+						drawY(g2d);
+					}
+					if (chartConfig.isDrawYAverage()) {
+						drawYAverage(g2d);
+					}
 				}
 			}
 		}
-	}
-
-	private ChartConfig chartConfig;
-
-	public void setChartConfig(ChartConfig chartConfig) {
-		this.chartConfig = chartConfig;
 	}
 
 	private void drawAxis(Graphics2D g2d) {
@@ -121,6 +137,7 @@ public class ChartPanel extends JPanel {
 		g2d.setColor(Color.black);
 		// draw axis backgroud
 		g2d.fillPolygon(new int[] { 0, this.getWidth(), this.getWidth(), 0 }, new int[] { 0, 0, this.getHeight(), this.getHeight() }, 4);
+		
 		// draw axis
 		g2d.setColor(Color.WHITE);
 		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
@@ -128,15 +145,25 @@ public class ChartPanel extends JPanel {
 		g2d.drawLine(borderInsets.left, borderInsets.top, borderInsets.left, yEnd);
 		g2d.drawLine(borderInsets.left, borderInsets.top, borderInsets.left - 3, borderInsets.top + 3);
 		g2d.drawLine(borderInsets.left, borderInsets.top, borderInsets.left + 3, borderInsets.top + 3);
+		g2d.drawLine(xEnd, borderInsets.top, xEnd, yEnd);
 		g2d.drawLine(borderInsets.left, yEnd, xEnd, yEnd);
 		g2d.drawLine(xEnd, yEnd, xEnd - 3, yEnd + 3);
 		g2d.drawLine(xEnd, yEnd, xEnd - 3, yEnd - 3);
+		
 		// draw y mark
 		g2d.drawLine(borderInsets.left + 5, borderInsets.top, borderInsets.left - 5, borderInsets.top);
 		g2d.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 4, borderInsets.left - 5, borderInsets.top + yLength / 4);
 		g2d.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 2, borderInsets.left - 5, borderInsets.top + yLength / 2);
 		g2d.drawLine(borderInsets.left + 5, borderInsets.top + yLength / 4 * 3, borderInsets.left - 5, borderInsets.top + yLength / 4 * 3);
 		g2d.drawLine(borderInsets.left, yEnd, borderInsets.left - 5, yEnd);
+		
+		// draw y mark
+		g2d.drawLine(xEnd + 5, borderInsets.top, xEnd - 5, borderInsets.top);
+		g2d.drawLine(xEnd + 5, borderInsets.top + yLength / 4, xEnd - 5, borderInsets.top + yLength / 4);
+		g2d.drawLine(xEnd + 5, borderInsets.top + yLength / 2, xEnd - 5, borderInsets.top + yLength / 2);
+		g2d.drawLine(xEnd + 5, borderInsets.top + yLength / 4 * 3, xEnd - 5, borderInsets.top + yLength / 4 * 3);
+		g2d.drawLine(xEnd, yEnd, borderInsets.left + 5, yEnd);
+		
 		// draw x mark
 		g2d.drawLine(xEnd, yEnd, xEnd, yEnd + 5);
 		g2d.drawLine(borderInsets.left + xLength / 8 * 7, yEnd, borderInsets.left + xLength / 8 * 7, yEnd + 5);
@@ -147,6 +174,7 @@ public class ChartPanel extends JPanel {
 		g2d.drawLine(borderInsets.left + xLength / 4, yEnd, borderInsets.left + xLength / 4, yEnd + 5);
 		g2d.drawLine(borderInsets.left + xLength / 8 * 1, yEnd, borderInsets.left + xLength / 8 * 1, yEnd + 5);
 		g2d.drawLine(borderInsets.left, yEnd, borderInsets.left, yEnd + 5);
+		
 		// draw axis label
 		ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
 		g2d.setComposite(ac);
@@ -200,41 +228,41 @@ public class ChartPanel extends JPanel {
 		g2d.drawString(yLabel, 0, 0);
 	}
 
-	private void drawYMark(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
+	private void drawYMark(Graphics2D g2d ) {
 		AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
 		g2d.setComposite(ac);
 		AffineTransform transform = new AffineTransform();
 		int yLength = this.getHeight() - borderInsets.top - borderInsets.bottom;
-		FontMetrics metrics = g.getFontMetrics();
+		FontMetrics metrics = g2d.getFontMetrics();
 		String yLabel;
 		// draw y mark label
-		g.setColor(Color.red);
+		g2d.setColor(Color.red);
+		int xLength = this.getWidth() - borderInsets.left - borderInsets.right;
 		yLabel = String.valueOf(this.yMax);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top - metrics.stringWidth(yLabel) / 2);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top - metrics.stringWidth(yLabel) / 2);
 		transform.rotate(Math.PI / 2);
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
+		g2d.drawString(yLabel, 0, 0);
 		yLabel = String.valueOf((this.yMax - this.yMin) / 4 * 3 + this.yMin);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength / 4 - metrics.stringWidth(yLabel) / 2);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength / 4 - metrics.stringWidth(yLabel) / 2);
 		transform.rotate(Math.PI / 2);
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
+		g2d.drawString(yLabel, 0, 0);
 		yLabel = String.valueOf((this.yMax - this.yMin) / 2 + this.yMin);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength / 2 - metrics.stringWidth(yLabel) / 2);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength / 2 - metrics.stringWidth(yLabel) / 2);
 		transform.rotate(Math.PI / 2);
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
+		g2d.drawString(yLabel, 0, 0);
 		yLabel = String.valueOf((this.yMax - this.yMin) / 4 + this.yMin);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength / 4 * 3 - metrics.stringWidth(yLabel) / 2);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength / 4 * 3 - metrics.stringWidth(yLabel) / 2);
 		transform.rotate(Math.PI / 2);
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
+		g2d.drawString(yLabel, 0, 0);
 		yLabel = String.valueOf(this.yMin);
-		transform.setToTranslation(borderInsets.left + metrics.getHeight(), borderInsets.top + yLength - metrics.stringWidth(yLabel) / 2);
+		transform.setToTranslation(borderInsets.left + xLength + metrics.getHeight(), borderInsets.top + yLength - metrics.stringWidth(yLabel) / 2);
 		transform.rotate(Math.PI / 2);
 		g2d.setTransform(transform);
-		g.drawString(yLabel, 0, 0);
+		g2d.drawString(yLabel, 0, 0);
 	}
 
 	/**
@@ -285,23 +313,17 @@ public class ChartPanel extends JPanel {
 		AffineTransform transform = new AffineTransform();
 		transform.setToTranslation(borderInsets.left, this.getHeight() - borderInsets.bottom);
 		g2d.setTransform(transform);
-		Object[] countArray = xMapFrequency.entrySet().toArray();
-		Arrays.sort(countArray, new Comparator<Object>() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public int compare(Object o1, Object o2) {
-				return (int) (((Entry<Double, Integer>) o1).getKey() - ((Entry<Double, Integer>) o2).getKey());
-			}
-		});
-
+		if (this.chartConfig.isDrawFrequencyLine() && (this.xMapFrequencySorted == false)) {
+			sortFrequency(xFrequencies);
+		}
 		int xAxisLength = this.getWidth() - borderInsets.right - borderInsets.left;
 		int yAxisLength = this.getHeight() - borderInsets.bottom - borderInsets.top;
 		AlphaComposite acPoint = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
-		AlphaComposite acLine = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f);
+		AlphaComposite acLine = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f);
 		g2d.setColor(Color.blue);
 		GeneralPath line = new GeneralPath();
 		boolean lineStart = true;
-		for (Object entry : countArray) {
+		for (Object entry : xFrequencies) {
 			@SuppressWarnings("unchecked")
 			double x = ((Entry<Double, Integer>) entry).getKey();
 			int pointX = (int) ((x - xMin) / (xMax - xMin) * xAxisLength);
@@ -326,11 +348,23 @@ public class ChartPanel extends JPanel {
 		if (this.chartConfig.isDrawFrequencyLine()) {
 			g2d.draw(line);
 		}
-
 	}
 
-	private void drawY(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
+	private void drawFrequencyAverage(Graphics2D g2d) {
+	}
+
+	private void sortFrequency(Object[] countArray) {
+		Arrays.sort(countArray, new Comparator<Object>() {
+			@SuppressWarnings("unchecked")
+			@Override
+			public int compare(Object o1, Object o2) {
+				return (int) (((Entry<Double, Integer>) o1).getKey() - ((Entry<Double, Integer>) o2).getKey());
+			}
+		});
+		this.xMapFrequencySorted = true;
+	}
+
+	private void drawY(Graphics2D g2d) {
 		AffineTransform transform = new AffineTransform();
 		transform.setToTranslation(borderInsets.left, this.getHeight() - borderInsets.bottom);
 		g2d.setTransform(transform);
@@ -348,6 +382,10 @@ public class ChartPanel extends JPanel {
 				drawPoint(g2d, pointX, pointY);
 			}
 		}
+	}
+	
+	private void drawYAverage(Graphics2D g2d) {
+		
 	}
 
 	private void drawPoint(Graphics2D g2d, int pointX, int pointY) {

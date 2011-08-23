@@ -119,7 +119,7 @@ public class DateKit {
 		System.out.println( new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(date));
 		System.out.println(DateKit.date2ymdhms(date));
 
-		int times = 10000000;
+		int times = 10000;
 		long start = System.currentTimeMillis();
 		for (int i = 0; i < times; i++) {
 			SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
