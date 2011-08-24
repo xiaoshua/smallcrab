@@ -151,18 +151,26 @@ public class FileLineAnalyzer implements FileAnalyzer {
 			/*
 			 * @lineResult [X,Y1,Y2...]
 			 * 
-			 * @see com.google.code.smallcrab.analyze.FileLineAnalyzer.LineConsumer#consume(java.lang.String[])
+			 * @see
+			 * com.google.code.smallcrab.analyze.FileLineAnalyzer.LineConsumer
+			 * #consume(java.lang.String[])
 			 */
 			@Override
 			public void consume(String[] lineResult) {
-				if (ArrayKit.isNotEmpty(lineResult) && lineResult.length >= 2) { // 2 indicate [X,Y1]
+				if (ArrayKit.isNotEmpty(lineResult) && lineResult.length >= 2) { // 2
+																					// indicate
+																					// [X,Y1]
 					List<Double> xyaxis = new ArrayList<Double>(lineResult.length);
 					String x = lineResult[0];
 					double xaxis = 0;
-					try {
-						xaxis = dateFormat.parse(x).getTime();
-					} catch (ParseException e) {
-						e.printStackTrace();
+					if (x.indexOf('-') > 0) {
+						try {
+							xaxis = dateFormat.parse(x).getTime();
+						} catch (ParseException e) {
+							e.printStackTrace();
+						}
+					} else {
+						xaxis = Double.valueOf(x);
 					}
 					xyaxis.add(xaxis);
 					callback.setXValue(xaxis);
@@ -250,7 +258,16 @@ public class FileLineAnalyzer implements FileAnalyzer {
 					} catch (Throwable e) {
 						invalidLines++;
 					}
-					callback.addAnalyzedSize(((String) strLine).length() + 2);// 2 identified the length of /r/n, not very correct. FIXME
+					callback.addAnalyzedSize(((String) strLine).length() + 2);// 2
+																				// identified
+																				// the
+																				// length
+																				// of
+																				// /r/n,
+																				// not
+																				// very
+																				// correct.
+																				// FIXME
 					if (lineNumber % callback.getBufferLineSize() == 0) {
 						callback.callback();
 					}

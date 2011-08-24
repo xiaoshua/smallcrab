@@ -41,9 +41,9 @@ public class ChartPanel extends JPanel {
 
 	private double yMin = 0;
 
-	private int frequencyMin = 0;
+	private double frequencyMin = 0;
 
-	private int frequencyMax = 0;
+	private double frequencyMax = 0;
 
 	private List<List<Double>> yList;
 
@@ -103,6 +103,7 @@ public class ChartPanel extends JPanel {
 	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		Graphics2D g2d = (Graphics2D) g;
+		ajustValue();
 		if (yList != null) {
 			drawAxis(g2d);
 			drawXMark(g2d);
@@ -126,6 +127,15 @@ public class ChartPanel extends JPanel {
 					}
 				}
 			}
+		}
+	}
+
+	private void ajustValue() {
+		if(this.frequencyMax == this.frequencyMin) {
+			this.frequencyMin = 0;
+		}
+		if (this.yMax == this.yMin) {
+			this.yMin = 0;
 		}
 	}
 
@@ -199,33 +209,33 @@ public class ChartPanel extends JPanel {
 		int xLength = this.getWidth() - borderInsets.left - borderInsets.right;
 		int yLength = this.getHeight() - borderInsets.top - borderInsets.bottom;
 		FontMetrics metrics = g2d.getFontMetrics();
-		String yLabel;
+		String xLabel;
 		g2d.setColor(Color.WHITE);
 		cal.setTimeInMillis((long) this.xMax);
-		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
-		transform.setToTranslation(borderInsets.left + xLength - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
+		xLabel = String.valueOf(dateFormat.format(cal.getTime()));
+		transform.setToTranslation(borderInsets.left + xLength - metrics.stringWidth(xLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g2d.drawString(yLabel, 0, 0);
+		g2d.drawString(xLabel, 0, 0);
 		cal.setTimeInMillis((long) ((this.xMax - this.xMin) / 4 * 3 + this.xMin));
-		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
-		transform.setToTranslation(borderInsets.left + xLength / 4 * 3 - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
+		xLabel = String.valueOf(dateFormat.format(cal.getTime()));
+		transform.setToTranslation(borderInsets.left + xLength / 4 * 3 - metrics.stringWidth(xLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g2d.drawString(yLabel, 0, 0);
+		g2d.drawString(xLabel, 0, 0);
 		cal.setTimeInMillis((long) ((this.xMax - this.xMin) / 2 + this.xMin));
-		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
-		transform.setToTranslation(borderInsets.left + xLength / 2 - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
+		xLabel = String.valueOf(dateFormat.format(cal.getTime()));
+		transform.setToTranslation(borderInsets.left + xLength / 2 - metrics.stringWidth(xLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g2d.drawString(yLabel, 0, 0);
+		g2d.drawString(xLabel, 0, 0);
 		cal.setTimeInMillis((long) ((this.xMax - this.xMin) / 4 + this.xMin));
-		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
-		transform.setToTranslation(borderInsets.left + xLength / 4 - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
+		xLabel = String.valueOf(dateFormat.format(cal.getTime()));
+		transform.setToTranslation(borderInsets.left + xLength / 4 - metrics.stringWidth(xLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g2d.drawString(yLabel, 0, 0);
+		g2d.drawString(xLabel, 0, 0);
 		cal.setTimeInMillis((long) (this.xMin));
-		yLabel = String.valueOf(dateFormat.format(cal.getTime()));
-		transform.setToTranslation(borderInsets.left - metrics.stringWidth(yLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
+		xLabel = String.valueOf(dateFormat.format(cal.getTime()));
+		transform.setToTranslation(borderInsets.left - metrics.stringWidth(xLabel) / 2, borderInsets.top + yLength + metrics.getHeight());
 		g2d.setTransform(transform);
-		g2d.drawString(yLabel, 0, 0);
+		g2d.drawString(xLabel, 0, 0);
 	}
 
 	private void drawYMark(Graphics2D g2d ) {
